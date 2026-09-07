@@ -8,21 +8,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tiptap/core": "3.23.6",
-    "@tiptap/extension-collaboration": "3.23.6",
-    "@tiptap/extension-color": "3.23.6",
-    "@tiptap/extension-font-family": "3.23.6",
-    "@tiptap/extension-image": "3.23.6",
-    "@tiptap/extension-table": "3.23.6",
-    "@tiptap/extension-table-cell": "3.23.6",
-    "@tiptap/extension-table-header": "3.23.6",
-    "@tiptap/extension-table-row": "3.23.6",
-    "@tiptap/extension-text-align": "3.23.6",
-    "@tiptap/extension-text-style": "3.23.6",
-    "@tiptap/extension-underline": "3.23.6",
-    "@tiptap/pm": "3.23.6",
-    "@tiptap/react": "3.23.6",
-    "@tiptap/starter-kit": "3.23.6",
+    "@tiptap/core": "3.24.0",
+    "@tiptap/extension-collaboration": "3.24.0",
+    "@tiptap/extension-color": "3.24.0",
+    "@tiptap/extension-font-family": "3.24.0",
+    "@tiptap/extension-image": "3.24.0",
+    "@tiptap/extension-table": "3.24.0",
+    "@tiptap/extension-table-cell": "3.24.0",
+    "@tiptap/extension-table-header": "3.24.0",
+    "@tiptap/extension-table-row": "3.24.0",
+    "@tiptap/extension-text-align": "3.24.0",
+    "@tiptap/extension-text-style": "3.24.0",
+    "@tiptap/extension-underline": "3.24.0",
+    "@tiptap/pm": "3.24.0",
+    "@tiptap/react": "3.24.0",
+    "@tiptap/starter-kit": "3.24.0",
     "@tiptap/y-tiptap": "3.0.4",
     "axios": "^1.6.8",
     "date-fns": "^3.6.0",
@@ -49,7 +49,10 @@
     "vite": "^5.2.0"
   },
   "overrides": {
-    "@tiptap/core": "3.23.6",
-    "@tiptap/pm": "3.23.6"
+    "@tiptap/core": "3.24.0",
+    "@tiptap/pm": "3.24.0",
+    "@tiptap/extension-list": "3.24.0",
+    "@tiptap/extensions": "3.24.0",
+    "@tiptap/starter-kit": "3.24.0"
   }
 }
