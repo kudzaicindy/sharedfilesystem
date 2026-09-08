@@ -1,5 +1,5 @@
 {
-  "installCommand": "rm -rf client/node_modules && npm install --prefix client --legacy-peer-deps",
+  "installCommand": "rm -rf client/node_modules && npm cache clean --force && npm install --prefix client --legacy-peer-deps",
   "buildCommand": "npm run build --prefix client",
   "outputDirectory": "client/dist",
   "framework": null,
