@@ -21,6 +21,7 @@ import {
 
 /** Warm config + DocsAPI before the editor route mounts. */
 function warmOnlyOffice(docId) {
+  if (!isOnlyOfficeConfigured()) return;
   clearCachedOnlyOfficeConfig(docId);
   preloadOnlyOfficeApi();
   fetchOnlyOfficeConfig(docId).catch(() => {});

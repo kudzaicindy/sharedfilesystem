@@ -3,6 +3,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import LocalEditBanner from '../LocalEditBanner';
 import { useFiles } from '../../context/FilesContext';
+import { isOnlyOfficeConfigured } from '../../utils/onlyOfficeAvailability';
 import { preloadOnlyOfficeApi } from '../../utils/onlyOfficePreload';
 
 export default function CloudLayout({
@@ -13,6 +14,7 @@ export default function CloudLayout({
   const { refresh } = useFiles();
 
   useEffect(() => {
+    if (!isOnlyOfficeConfigured()) return undefined;
     const run = () => preloadOnlyOfficeApi();
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
       const id = window.requestIdleCallback(run, { timeout: 2500 });

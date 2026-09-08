@@ -237,7 +237,17 @@ async function downloadDocument({ docId, user, req }) {
   const { streamFromCache } = require('../../utils/file-cache');
   let stream = streamFromCache(doc.storageKey);
   if (!stream) {
-    stream = await getFileStream(doc.storageKey);
+    try {
+      stream = await getFileStream(doc.storageKey);
+    } catch (err) {
+      const msg = err?.message || 'Could not read file from storage';
+      throw Object.assign(
+        new Error(
+          `${msg}. Check STORAGE_TYPE and S3 settings on the server, or re-upload the file.`,
+        ),
+        { status: err.status || 500 },
+      );
+    }
   }
 
   // Only log explicit user-initiated downloads (attachment) to avoid spamming

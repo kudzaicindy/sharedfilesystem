@@ -1,38 +1,52 @@
 /** Fast path for OnlyOffice: preload api.js + short-lived config cache. */
 
 import api from './api';
-import { getConfiguredOnlyOfficeDsUrl, isOnlyOfficeConfigured } from './onlyOfficeAvailability';
+import {
+  getConfiguredOnlyOfficeDsUrl,
+  isOnlyOfficeConfigured,
+  sanitizeOnlyOfficeDsUrl,
+} from './onlyOfficeAvailability';
 
-const DEFAULT_DS = import.meta.env.PROD
-  ? getConfiguredOnlyOfficeDsUrl()
-  : (getConfiguredOnlyOfficeDsUrl() || 'http://localhost:8082');
+function initialDsUrl() {
+  const configured = sanitizeOnlyOfficeDsUrl(getConfiguredOnlyOfficeDsUrl());
+  if (configured) return configured;
+  if (import.meta.env.PROD) return '';
+  return 'http://localhost:8082';
+}
 
 const scriptPromises = new Map();
-let cachedDsUrl = DEFAULT_DS;
+let cachedDsUrl = initialDsUrl();
 const configCache = new Map(); // docId -> { data, at }
 const configInflight = new Map(); // docId -> Promise
 const CONFIG_TTL_MS = 5_000;
 
 export function getOnlyOfficeDsUrl() {
-  return cachedDsUrl || DEFAULT_DS;
+  return cachedDsUrl || initialDsUrl();
 }
 
 export function rememberOnlyOfficeDsUrl(url) {
-  if (url) cachedDsUrl = String(url).replace(/\/$/, '');
+  const safe = sanitizeOnlyOfficeDsUrl(url);
+  if (safe) cachedDsUrl = safe;
 }
 
 export function onlyOfficeApiScriptUrl(dsUrl = getOnlyOfficeDsUrl()) {
-  return `${String(dsUrl).replace(/\/$/, '')}/web-apps/apps/api/documents/api.js`;
+  const base = sanitizeOnlyOfficeDsUrl(dsUrl);
+  if (!base) return '';
+  return `${base}/web-apps/apps/api/documents/api.js`;
 }
 
 /** Load DocsAPI once; concurrent callers share the same promise. */
 export function loadOnlyOfficeApi(dsUrl = getOnlyOfficeDsUrl()) {
+  const src = onlyOfficeApiScriptUrl(dsUrl);
+  if (!src) {
+    return Promise.reject(new Error('OnlyOffice is not configured for this environment'));
+  }
+
   rememberOnlyOfficeDsUrl(dsUrl);
   if (typeof window !== 'undefined' && window.DocsAPI?.DocEditor) {
     return Promise.resolve(window.DocsAPI);
   }
 
-  const src = onlyOfficeApiScriptUrl(dsUrl);
   const existing = scriptPromises.get(src);
   if (existing) return existing;
 
@@ -72,8 +86,11 @@ export function loadOnlyOfficeApi(dsUrl = getOnlyOfficeDsUrl()) {
 
 /** Kick off script download as early as possible (Open click / app idle). */
 export function preloadOnlyOfficeApi() {
-  if (!DEFAULT_DS || (import.meta.env.PROD && !isOnlyOfficeConfigured())) return;
+  if (!isOnlyOfficeConfigured()) return;
+
   const src = onlyOfficeApiScriptUrl();
+  if (!src) return;
+
   if (typeof document !== 'undefined') {
     const existingPreload = document.querySelector(`link[data-oo-preload="${src}"]`);
     if (!existingPreload) {
@@ -121,6 +138,7 @@ export function fetchOnlyOfficeConfig(docId, { force = false } = {}) {
 
   const promise = api.get(`/onlyoffice/config/${id}`)
     .then(({ data }) => {
+      if (data?.dsUrl) data.dsUrl = sanitizeOnlyOfficeDsUrl(data.dsUrl) || data.dsUrl;
       setCachedOnlyOfficeConfig(id, data);
       return data;
     })

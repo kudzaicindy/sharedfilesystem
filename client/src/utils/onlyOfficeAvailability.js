@@ -10,13 +10,23 @@ export function isOnlyOfficeFileExt(ext = '') {
 }
 
 /** Localhost DS URLs work in dev only — not on Vercel production. */
+export function isLocalOnlyOfficeDsUrl(url = '') {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(String(url).replace(/\/$/, ''));
+}
+
 export function isOnlyOfficeConfigured() {
   const url = getConfiguredOnlyOfficeDsUrl();
   if (!url) return false;
-  if (import.meta.env.PROD && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(url)) {
-    return false;
-  }
+  if (import.meta.env.PROD && isLocalOnlyOfficeDsUrl(url)) return false;
   return true;
+}
+
+/** Drop unusable DS URLs (e.g. API returning localhost in production). */
+export function sanitizeOnlyOfficeDsUrl(url) {
+  const normalized = String(url || '').trim().replace(/\/$/, '');
+  if (!normalized) return '';
+  if (import.meta.env.PROD && isLocalOnlyOfficeDsUrl(normalized)) return '';
+  return normalized;
 }
 
 /** Default in-app editor when user clicks Open (production-friendly). */

@@ -38,7 +38,11 @@ function onlyOfficeSecret() {
 }
 
 function dsUrl() {
-  return (process.env.ONLYOFFICE_DS_URL || 'http://localhost:8082').replace(/\/$/, '');
+  const raw = (process.env.ONLYOFFICE_DS_URL || '').replace(/\/$/, '');
+  if (process.env.NODE_ENV === 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(raw)) {
+    return '';
+  }
+  return raw || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8082');
 }
 
 function serverUrl() {
@@ -93,6 +97,13 @@ router.get('/config/:docId', authenticate, async (req, res, next) => {
         .lean(),
     ]);
     if (!doc || doc.isDeleted) throw Object.assign(new Error('Document not found'), { status: 404 });
+
+    if (!dsUrl()) {
+      throw Object.assign(
+        new Error('OnlyOffice is not configured on the server. Set ONLYOFFICE_DS_URL to a public Document Server URL.'),
+        { status: 503 },
+      );
+    }
 
     const ext = assertOnlyOfficeSupported(doc.name);
     const versionNum = lastVersion?.versionNum || 1;
