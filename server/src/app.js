@@ -14,6 +14,7 @@ const onlyOfficeRoutes = require('./routes/onlyoffice.routes');
 const fileRequestRoutes = require('./routes/fileRequest.routes');
 const webdavRoutes   = require('./routes/webdav.routes');
 const { getUploadDir } = require('./utils/storage');
+const { getAllowedOrigins } = require('./config/cors');
 
 const app = express();
 
@@ -25,15 +26,11 @@ app.use(cors({
   origin(origin, cb) {
     // allow same-origin / server-to-server requests (no Origin header)
     if (!origin) return cb(null, true);
-    const allowed = [
-      process.env.CLIENT_URL,
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:5174',
-    ].filter(Boolean);
-    if (allowed.includes(origin)) return cb(null, true);
-    return cb(new Error(`CORS blocked: ${origin}`));
+    const allowed = getAllowedOrigins();
+    const normalized = origin.replace(/\/$/, '');
+    if (allowed.includes(normalized)) return cb(null, true);
+    console.warn(`CORS blocked: ${origin} (allowed: ${allowed.join(', ')})`);
+    return cb(null, false);
   },
   credentials: true,
 }));
