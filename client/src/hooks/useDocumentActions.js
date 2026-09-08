@@ -13,10 +13,11 @@ import {
   clearCachedOnlyOfficeConfig,
 } from '../utils/onlyOfficePreload';
 
-function isOnlyOfficeFile(filename) {
-  const ext = filename?.split('.')?.pop()?.toLowerCase() || '';
-  return ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv'].includes(ext);
-}
+import {
+  isOnlyOfficeConfigured,
+  isOnlyOfficeFileExt,
+  pickDefaultOpenChoice,
+} from '../utils/onlyOfficeAvailability';
 
 /** Warm config + DocsAPI before the editor route mounts. */
 function warmOnlyOffice(docId) {
@@ -72,13 +73,29 @@ export function useDocumentActions({ alert, openWith, onShowActivity }) {
     }
   }, [navigate, startLocalEdit]);
 
-  /** Primary Open: OnlyOffice for Office files (tracked in-browser editing). */
+  /** Primary Open — simple editors in production; OnlyOffice when configured. */
   const handleOpen = useCallback(async (doc) => {
     try {
-      if (isOnlyOfficeFile(doc?.name)) {
-        warmOnlyOffice(doc._id);
-        saveEditorReturnPath();
-        navigate(`/editor/${doc._id}`);
+      const ext = doc?.name?.split('.')?.pop()?.toLowerCase() || '';
+      if (isOnlyOfficeFileExt(ext)) {
+        const defaultChoice = pickDefaultOpenChoice({
+          ext,
+          browserOk: false,
+          officeDesktopOk: ['doc', 'docx', 'xls', 'xlsx', 'csv', 'ppt', 'pptx'].includes(ext),
+        });
+        if (defaultChoice === 'onlyoffice') {
+          warmOnlyOffice(doc._id);
+          saveEditorReturnPath();
+          navigate(`/editor/${doc._id}`);
+          return;
+        }
+        if (['collab-docx', 'docx-editor', 'xlsx-editor'].includes(defaultChoice)) {
+          saveEditorReturnPath();
+          await runOpenChoice(doc, defaultChoice);
+          return;
+        }
+        const choice = await openWith?.(doc);
+        await runOpenChoice(doc, choice || 'browser');
         return;
       }
 

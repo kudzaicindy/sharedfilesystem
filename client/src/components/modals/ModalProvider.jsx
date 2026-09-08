@@ -2,6 +2,11 @@ import { createContext, useContext, useState, useCallback, useRef, useEffect } f
 import { Globe, Monitor, FilePenLine, Users } from 'lucide-react';
 import Modal, { ModalButton } from './Modal';
 import { resolveMimeType, canPreviewInBrowser } from '../../utils/fileTypes';
+import {
+  isOnlyOfficeConfigured,
+  isOnlyOfficeFileExt,
+  pickDefaultOpenChoice,
+} from '../../utils/onlyOfficeAvailability';
 
 const ModalContext = createContext(null);
 
@@ -145,22 +150,20 @@ function OpenWithDialog({ document, onClose, onOpen }) {
   const mimeType = resolveMimeType(document);
   const browserOk = canPreviewInBrowser(mimeType);
   const ext = document?.name?.split('.')?.pop()?.toLowerCase() || '';
-  const onlyOfficeOk = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv'].includes(ext);
+  const onlyOfficeFile = isOnlyOfficeFileExt(ext);
+  const onlyOfficeOk = onlyOfficeFile && isOnlyOfficeConfigured();
   const officeDesktopOk = ['doc', 'docx', 'xls', 'xlsx', 'csv', 'ppt', 'pptx'].includes(ext);
   const docxEditorOk = ext === 'docx';
   const xlsxEditorOk = ext === 'xlsx';
   const collabOk = docxEditorOk;
 
-  const [choice, setChoice] = useState(
-    onlyOfficeOk ? 'onlyoffice' : browserOk ? 'browser' : 'office-desktop',
+  const [choice, setChoice] = useState(() =>
+    pickDefaultOpenChoice({ ext, browserOk, officeDesktopOk }),
   );
 
   useEffect(() => {
-    if (onlyOfficeOk) setChoice('onlyoffice');
-    else if (browserOk) setChoice('browser');
-    else if (officeDesktopOk) setChoice('office-desktop');
-    else setChoice('browser');
-  }, [document?._id, browserOk, onlyOfficeOk, officeDesktopOk]);
+    setChoice(pickDefaultOpenChoice({ ext, browserOk, officeDesktopOk }));
+  }, [document?._id, browserOk, officeDesktopOk, ext]);
 
   const officeLabel =
     ext === 'xls' || ext === 'xlsx' || ext === 'csv' ? 'Microsoft Excel (desktop)' :
@@ -170,12 +173,41 @@ function OpenWithDialog({ document, onClose, onOpen }) {
 
   const options = [
     {
+      id: 'collab-docx',
+      icon: Users,
+      label: 'Edit together (collab)',
+      hint: collabOk
+        ? 'Real-time co-editing for .docx (works on Vercel + Render)'
+        : 'Available for .docx files',
+      disabled: !collabOk,
+    },
+    {
+      id: 'docx-editor',
+      icon: FilePenLine,
+      label: 'Simple .docx editor',
+      hint: docxEditorOk
+        ? 'In-browser Word editing with save → versions'
+        : 'Available for .docx files',
+      disabled: !docxEditorOk,
+    },
+    {
+      id: 'xlsx-editor',
+      icon: FilePenLine,
+      label: 'Simple .xlsx editor',
+      hint: xlsxEditorOk
+        ? 'In-browser spreadsheet with save → versions'
+        : 'Available for .xlsx files',
+      disabled: !xlsxEditorOk,
+    },
+    {
       id: 'onlyoffice',
       icon: FilePenLine,
       label: 'Edit in Alamait (OnlyOffice)',
       hint: onlyOfficeOk
-        ? 'Recommended — edit in browser with versions and activity tracked'
-        : 'Available for .doc / .docx / .xls / .xlsx / .ppt / .pptx',
+        ? 'Full Office UI — live co-edit & revision tracking (requires Document Server)'
+        : onlyOfficeFile
+          ? 'Set VITE_ONLYOFFICE_DS_URL to a public Document Server URL to enable'
+          : 'Available for .doc / .docx / .xls / .xlsx / .ppt / .pptx',
       disabled: !onlyOfficeOk,
     },
     {
@@ -204,33 +236,6 @@ function OpenWithDialog({ document, onClose, onOpen }) {
         ? 'View in a new browser tab (PDF, images, text)'
         : 'Not supported for this file type',
       disabled: !browserOk,
-    },
-    {
-      id: 'collab-docx',
-      icon: Users,
-      label: 'Edit together (collab)',
-      hint: collabOk
-        ? 'Real-time multi-user editing (prototype)'
-        : 'Available for .docx files',
-      disabled: !collabOk,
-    },
-    {
-      id: 'docx-editor',
-      icon: FilePenLine,
-      label: 'Simple .docx editor',
-      hint: docxEditorOk
-        ? 'In-browser editor without OnlyOffice Docker'
-        : 'Available for .docx files',
-      disabled: !docxEditorOk,
-    },
-    {
-      id: 'xlsx-editor',
-      icon: FilePenLine,
-      label: 'Simple .xlsx editor',
-      hint: xlsxEditorOk
-        ? 'In-browser spreadsheet without OnlyOffice Docker'
-        : 'Available for .xlsx files',
-      disabled: !xlsxEditorOk,
     },
   ];
 

@@ -1,9 +1,11 @@
 /** Fast path for OnlyOffice: preload api.js + short-lived config cache. */
 
 import api from './api';
+import { getConfiguredOnlyOfficeDsUrl, isOnlyOfficeConfigured } from './onlyOfficeAvailability';
 
-const DEFAULT_DS =
-  (import.meta.env.VITE_ONLYOFFICE_DS_URL || 'http://localhost:8082').replace(/\/$/, '');
+const DEFAULT_DS = import.meta.env.PROD
+  ? getConfiguredOnlyOfficeDsUrl()
+  : (getConfiguredOnlyOfficeDsUrl() || 'http://localhost:8082');
 
 const scriptPromises = new Map();
 let cachedDsUrl = DEFAULT_DS;
@@ -70,6 +72,7 @@ export function loadOnlyOfficeApi(dsUrl = getOnlyOfficeDsUrl()) {
 
 /** Kick off script download as early as possible (Open click / app idle). */
 export function preloadOnlyOfficeApi() {
+  if (!DEFAULT_DS || (import.meta.env.PROD && !isOnlyOfficeConfigured())) return;
   const src = onlyOfficeApiScriptUrl();
   if (typeof document !== 'undefined') {
     const existingPreload = document.querySelector(`link[data-oo-preload="${src}"]`);
