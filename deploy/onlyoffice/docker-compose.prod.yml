@@ -1,0 +1,40 @@
+# OnlyOffice on a VPS (Hetzner, DigitalOcean, etc.)
+# 1. Point a subdomain (e.g. onlyoffice.yourdomain.com) to this server's IP
+# 2. Copy .env.example to .env and set ONLYOFFICE_JWT_SECRET
+# 3. docker compose -f docker-compose.prod.yml up -d
+# 4. Put ONLYOFFICE_DS_URL=https://onlyoffice.yourdomain.com on Render + Vercel
+
+services:
+  onlyoffice:
+    image: onlyoffice/documentserver:8.2.2
+    restart: unless-stopped
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: "${ONLYOFFICE_JWT_SECRET}"
+      JWT_HEADER: "Authorization"
+    volumes:
+      - oo_data:/var/www/onlyoffice/Data
+      - oo_logs:/var/log/onlyoffice
+    ports:
+      - "8082:80"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      OO_HOST: "${OO_HOST:-onlyoffice.localhost}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - onlyoffice
+
+volumes:
+  oo_data:
+  oo_logs:
+  caddy_data:
+  caddy_config:

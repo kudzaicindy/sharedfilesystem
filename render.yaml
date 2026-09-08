@@ -1,0 +1,18 @@
+# Render Blueprint — API only. Deploy OnlyOffice separately (see deploy/onlyoffice/README.txt).
+services:
+  - type: web
+    name: shared-docs-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Set in Render dashboard:
+      # MONGODB_URI, JWT_SECRET, REDIS_URL, STORAGE_TYPE, S3_*
+      # CLIENT_URL=https://sharedfilessystem.vercel.app
+      # SERVER_PUBLIC_URL=https://sharedfilesystem.onrender.com
+      # ONLYOFFICE_DS_URL=https://YOUR-ONLYOFFICE-URL
+      # ONLYOFFICE_SERVER_URL=https://sharedfilesystem.onrender.com
+      # ONLYOFFICE_JWT_SECRET=<same as OnlyOffice host>

@@ -42,7 +42,11 @@ function dsUrl() {
 }
 
 function serverUrl() {
-  return (process.env.ONLYOFFICE_SERVER_URL || 'http://localhost:5000').replace(/\/$/, '');
+  const base =
+    process.env.ONLYOFFICE_SERVER_URL ||
+    process.env.SERVER_PUBLIC_URL ||
+    'http://localhost:5000';
+  return base.replace(/\/$/, '');
 }
 
 function extFromFilename(name) {

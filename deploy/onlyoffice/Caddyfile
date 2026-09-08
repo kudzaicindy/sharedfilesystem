@@ -1,0 +1,3 @@
+{$OO_HOST} {
+	reverse_proxy onlyoffice:80
+}
