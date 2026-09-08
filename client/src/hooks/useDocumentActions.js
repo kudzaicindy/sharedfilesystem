@@ -17,6 +17,7 @@ import {
   isOnlyOfficeConfigured,
   isOnlyOfficeFileExt,
   pickDefaultOpenChoice,
+  getFallbackEditorPath,
 } from '../utils/onlyOfficeAvailability';
 
 /** Warm config + DocsAPI before the editor route mounts. */
@@ -44,6 +45,15 @@ export function useDocumentActions({ alert, openWith, onShowActivity }) {
       return;
     }
     if (choice === 'onlyoffice') {
+      if (!isOnlyOfficeConfigured()) {
+        const ext = doc?.name?.split('.')?.pop()?.toLowerCase() || '';
+        const fallback = getFallbackEditorPath(doc._id, ext);
+        if (fallback) {
+          saveEditorReturnPath();
+          navigate(fallback);
+          return;
+        }
+      }
       warmOnlyOffice(doc._id);
       saveEditorReturnPath();
       navigate(`/editor/${doc._id}`);

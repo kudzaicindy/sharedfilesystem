@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 const { getAllowedOrigins } = require('../../config/cors');
 const { getRedis } = require('../../config/redis');

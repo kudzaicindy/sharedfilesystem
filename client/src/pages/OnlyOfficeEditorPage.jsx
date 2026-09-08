@@ -6,6 +6,10 @@ import { goBackFromEditor } from '../utils/editorNavigation';
 import { notifyAuditRefresh } from '../utils/auditEvents';
 import { useDocumentPresence } from '../hooks/useDocumentPresence';
 import {
+  getFallbackEditorPath,
+  isOnlyOfficeConfigured,
+} from '../utils/onlyOfficeAvailability';
+import {
   getCachedOnlyOfficeConfig,
   loadOnlyOfficeApi,
   preloadOnlyOfficeApi,
@@ -15,9 +19,10 @@ import {
 export default function OnlyOfficeEditorPage() {
   const { docId } = useParams();
   const navigate = useNavigate();
-  const cached = getCachedOnlyOfficeConfig(docId);
+  const onlyOfficeReady = isOnlyOfficeConfigured();
+  const cached = onlyOfficeReady ? getCachedOnlyOfficeConfig(docId) : null;
   const [state, setState] = useState({
-    loading: !cached,
+    loading: onlyOfficeReady && !cached,
     error: null,
     payload: cached,
   });
@@ -43,23 +48,43 @@ export default function OnlyOfficeEditorPage() {
     goBackFromEditor(navigate, '/files');
   };
 
+  // OnlyOffice not available in production — use collab/xlsx editors instead
+  useEffect(() => {
+    if (onlyOfficeReady) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get(`/documents/${docId}/meta`);
+        if (cancelled) return;
+        const ext = data?.name?.split('.')?.pop()?.toLowerCase() || '';
+        const path = getFallbackEditorPath(docId, ext);
+        navigate(path || '/files', { replace: true });
+      } catch {
+        if (!cancelled) navigate('/files', { replace: true });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [docId, navigate, onlyOfficeReady]);
+
   // Start script download immediately (in parallel with config)
   useEffect(() => {
+    if (!onlyOfficeReady) return;
     preloadOnlyOfficeApi();
-  }, []);
+  }, [onlyOfficeReady]);
 
   // Track open once, after editor is up — never compete with load
   useEffect(() => {
-    if (openTrackedRef.current || !docId || !state.payload) return;
+    if (!onlyOfficeReady || openTrackedRef.current || !docId || !state.payload) return;
     openTrackedRef.current = true;
     const t = setTimeout(() => {
       api.post('/sends/track/open', { documentId: docId }).catch(() => {});
     }, 2500);
     return () => clearTimeout(t);
-  }, [docId, state.payload]);
+  }, [docId, onlyOfficeReady, state.payload]);
 
   // Fetch config (shared with Open warm-up — one request, not two)
   useEffect(() => {
+    if (!onlyOfficeReady) return undefined;
     let cancelled = false;
     const hit = getCachedOnlyOfficeConfig(docId);
     if (hit) {
@@ -77,18 +102,18 @@ export default function OnlyOfficeEditorPage() {
         if (cancelled) return;
         setState({
           loading: false,
-          error: err.response?.data?.message || 'Could not start the editor. Is OnlyOffice running?',
+          error: err.response?.data?.message || err.message || 'Could not start the editor. Is OnlyOffice running?',
           payload: null,
         });
       }
     })();
 
     return () => { cancelled = true; };
-  }, [docId]);
+  }, [docId, onlyOfficeReady]);
 
   // Init editor as soon as config + DocsAPI are ready (parallel wait)
   useEffect(() => {
-    if (!state.payload) return undefined;
+    if (!onlyOfficeReady || !state.payload) return undefined;
 
     const gen = ++initGen.current;
     let editor = null;
@@ -141,12 +166,20 @@ export default function OnlyOfficeEditorPage() {
         if (editorRef.current === dying) editorRef.current = null;
       }, 0);
     };
-  }, [containerId, state.payload, docId]);
+  }, [containerId, onlyOfficeReady, state.payload, docId]);
 
   useEffect(() => () => {
     if (saveRefreshTimer.current) clearTimeout(saveRefreshTimer.current);
     scheduleAuditRefresh();
   }, [docId]);
+
+  if (!onlyOfficeReady) {
+    return (
+      <div className="h-screen flex items-center justify-center text-sm text-gray-500">
+        Opening editor…
+      </div>
+    );
+  }
 
   const docTitle = state.payload?.config?.document?.title || (state.loading ? 'Loading…' : 'Document');
   const presenceLabel = othersEditing.length > 0

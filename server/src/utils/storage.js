@@ -101,9 +101,21 @@ async function getFileStream(key) {
   } catch (err) {
     const code = err?.name || err?.Code || err?.code;
     if (code === 'NoSuchKey' || code === 'NotFound') {
-      return getLocalReadStream(key);
+      throw Object.assign(
+        new Error('File not found in storage. Re-upload the file after configuring S3/R2.'),
+        { status: 404 },
+      );
     }
-    throw err;
+    if (code === 'AccessDenied' || code === 'InvalidAccessKeyId') {
+      throw Object.assign(
+        new Error('Storage access denied. Check S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY on the server.'),
+        { status: 500 },
+      );
+    }
+    throw Object.assign(
+      new Error(err?.message || 'Could not read file from storage'),
+      { status: 500 },
+    );
   }
 }
 

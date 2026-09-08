@@ -218,6 +218,13 @@ async function getVersions(docId) {
   return Version.find({ document: docId }).sort({ versionNum: -1 }).lean();
 }
 
+async function getDocumentMeta({ docId, user }) {
+  const doc = await Document.findById(docId).select('name folder isDeleted').lean();
+  if (!doc || doc.isDeleted) throw Object.assign(new Error('Document not found'), { status: 404 });
+  await assertFolderAccess(doc.folder, user._id);
+  return doc;
+}
+
 async function downloadDocument({ docId, user, req }) {
   const doc = await Document.findById(docId).select('name folder storageKey mimeType isDeleted').lean();
   if (!doc || doc.isDeleted) throw Object.assign(new Error('Document not found'), { status: 404 });
@@ -227,10 +234,18 @@ async function downloadDocument({ docId, user, req }) {
     await assertFolderAccess(doc.folder, user._id);
   }
 
-  if (!doc.storageKey || !localFileExists(doc.storageKey)) {
+  if (!doc.storageKey) {
     throw Object.assign(
       new Error('File not found on server. It may have been deleted — try uploading again.'),
-      { status: 404 }
+      { status: 404 },
+    );
+  }
+
+  const storageType = process.env.STORAGE_TYPE || 'local';
+  if (storageType === 'local' && !localFileExists(doc.storageKey)) {
+    throw Object.assign(
+      new Error('File not found on server. It may have been deleted — try uploading again.'),
+      { status: 404 },
     );
   }
 
@@ -298,7 +313,7 @@ module.exports = {
   uploadDocument, updateDocument, updateDocumentFromBuffer,
   beginLocalEdit, endLocalEdit,
   softDeleteDocument,
-  listDocuments, listDeletedDocuments, restoreDocument, getVersions,
+  listDocuments, listDeletedDocuments, restoreDocument, getVersions, getDocumentMeta,
   downloadDocument,
   renameDocument,
 };

@@ -36,7 +36,9 @@ export default function CollabEditorPage() {
   const [status, setStatus] = useState('connecting');
   const [loadError, setLoadError] = useState(null);
 
-  const collabServerUrl = import.meta.env.VITE_COLLAB_SERVER_URL || 'http://localhost:5000';
+  const collabServerUrl = import.meta.env.VITE_COLLAB_SERVER_URL
+    || import.meta.env.VITE_SOCKET_URL
+    || 'http://localhost:5000';
 
   const me = useMemo(() => {
     return { name: randomName(), color: randomColor() };

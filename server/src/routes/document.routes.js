@@ -5,6 +5,7 @@ const {
   uploadDocument, updateDocument,
   softDeleteDocument, listDocuments, listDeletedDocuments,
   restoreDocument, getVersions, downloadDocument, renameDocument,
+  getDocumentMeta,
   beginLocalEdit, endLocalEdit,
 } = require('../services/documents/document.service');
 
@@ -54,6 +55,13 @@ router.post('/:docId/restore', async (req, res, next) => {
   try {
     const doc = await restoreDocument({ docId: req.params.docId, user: req.user, req });
     res.json(doc);
+  } catch (err) { next(err); }
+});
+
+router.get('/:docId/meta', async (req, res, next) => {
+  try {
+    const doc = await getDocumentMeta({ docId: req.params.docId, user: req.user });
+    res.json({ _id: doc._id, name: doc.name });
   } catch (err) { next(err); }
 });
 

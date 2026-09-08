@@ -38,3 +38,16 @@ export function pickDefaultOpenChoice({ ext, browserOk, officeDesktopOk }) {
   if (browserOk) return 'browser';
   return 'browser';
 }
+
+/** Route path for the default in-app editor (when OnlyOffice is unavailable). */
+export function getFallbackEditorPath(docId, ext = '') {
+  const choice = pickDefaultOpenChoice({
+    ext: String(ext).toLowerCase(),
+    browserOk: true,
+    officeDesktopOk: false,
+  });
+  if (choice === 'collab-docx') return `/collab/${docId}`;
+  if (choice === 'xlsx-editor') return `/xlsx-editor/${docId}`;
+  if (choice === 'docx-editor') return `/docx-editor/${docId}`;
+  return null;
+}

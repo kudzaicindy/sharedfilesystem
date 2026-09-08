@@ -136,6 +136,10 @@ export function fetchOnlyOfficeConfig(docId, { force = false } = {}) {
   const pending = configInflight.get(id);
   if (pending) return pending;
 
+  if (!isOnlyOfficeConfigured()) {
+    return Promise.reject(new Error('OnlyOffice is not configured for this environment'));
+  }
+
   const promise = api.get(`/onlyoffice/config/${id}`)
     .then(({ data }) => {
       if (data?.dsUrl) data.dsUrl = sanitizeOnlyOfficeDsUrl(data.dsUrl) || data.dsUrl;
