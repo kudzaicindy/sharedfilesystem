@@ -14,7 +14,7 @@ const onlyOfficeRoutes = require('./routes/onlyoffice.routes');
 const fileRequestRoutes = require('./routes/fileRequest.routes');
 const webdavRoutes   = require('./routes/webdav.routes');
 const { getUploadDir } = require('./utils/storage');
-const { getAllowedOrigins } = require('./config/cors');
+const { getAllowedOrigins, isOriginAllowed } = require('./config/cors');
 
 const app = express();
 
@@ -25,11 +25,8 @@ app.use(helmet({
 app.use(cors({
   origin(origin, cb) {
     // allow same-origin / server-to-server requests (no Origin header)
-    if (!origin) return cb(null, true);
-    const allowed = getAllowedOrigins();
-    const normalized = origin.replace(/\/$/, '');
-    if (allowed.includes(normalized)) return cb(null, true);
-    console.warn(`CORS blocked: ${origin} (allowed: ${allowed.join(', ')})`);
+    if (isOriginAllowed(origin)) return cb(null, true);
+    console.warn(`CORS blocked: ${origin} (allowed: ${getAllowedOrigins().join(', ')})`);
     return cb(null, false);
   },
   credentials: true,

@@ -12,6 +12,8 @@ services:
       # Set in Render dashboard:
       # MONGODB_URI, JWT_SECRET, REDIS_URL, STORAGE_TYPE, S3_*
       # CLIENT_URL=https://sharedfilessystem.vercel.app
+      # CORS_ORIGINS= (optional extra origins, comma-separated)
+      # Preview URLs like sharedfilessystem-*-*.vercel.app are allowed when CLIENT_URL is set
       # SERVER_PUBLIC_URL=https://sharedfilesystem.onrender.com
       # ONLYOFFICE_DS_URL=https://YOUR-ONLYOFFICE-URL
       # ONLYOFFICE_SERVER_URL=https://sharedfilesystem.onrender.com

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
-const { getAllowedOrigins } = require('../../config/cors');
+const { isOriginAllowed } = require('../../config/cors');
 const { getRedis } = require('../../config/redis');
 const { YSocketIO } = require('y-socket.io/dist/server');
 
@@ -8,7 +8,12 @@ let io;
 
 function initSocket(server) {
   io = new Server(server, {
-    cors: { origin: getAllowedOrigins(), credentials: true },
+    cors: {
+      origin: (origin, callback) => {
+        callback(null, isOriginAllowed(origin));
+      },
+      credentials: true,
+    },
   });
 
   // Yjs collab (no-auth prototype): handled on namespaces like "/yjs|<room>"
