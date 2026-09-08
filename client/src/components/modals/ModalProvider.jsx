@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Globe, Monitor, FilePenLine, Users } from 'lucide-react';
 import Modal, { ModalButton } from './Modal';
 import { resolveMimeType, canPreviewInBrowser } from '../../utils/fileTypes';
@@ -171,73 +171,79 @@ function OpenWithDialog({ document, onClose, onOpen }) {
     officeDesktopOk ? 'Microsoft Word (desktop)' :
     'Microsoft 365 (desktop)';
 
-  const options = [
-    {
-      id: 'collab-docx',
-      icon: Users,
-      label: 'Edit together (collab)',
-      hint: collabOk
-        ? 'Real-time co-editing for .docx (works on Vercel + Render)'
-        : 'Available for .docx files',
-      disabled: !collabOk,
-    },
-    {
-      id: 'docx-editor',
-      icon: FilePenLine,
-      label: 'Simple .docx editor',
-      hint: docxEditorOk
-        ? 'In-browser Word editing with save → versions'
-        : 'Available for .docx files',
-      disabled: !docxEditorOk,
-    },
-    {
-      id: 'xlsx-editor',
-      icon: FilePenLine,
-      label: 'Simple .xlsx editor',
-      hint: xlsxEditorOk
-        ? 'In-browser spreadsheet with save → versions'
-        : 'Available for .xlsx files',
-      disabled: !xlsxEditorOk,
-    },
-    {
-      id: 'onlyoffice',
-      icon: FilePenLine,
-      label: 'Edit in Alamait (OnlyOffice)',
-      hint: onlyOfficeOk
-        ? 'Full Office UI — live co-edit & revision tracking (requires Document Server)'
-        : onlyOfficeFile
-          ? 'Set VITE_ONLYOFFICE_DS_URL to a public Document Server URL to enable'
-          : 'Available for .doc / .docx / .xls / .xlsx / .ppt / .pptx',
-      disabled: !onlyOfficeOk,
-    },
-    {
-      id: 'ms365',
-      icon: Monitor,
-      label: 'Edit in Microsoft 365 Online',
-      hint: onlyOfficeOk || officeDesktopOk
-        ? 'Opens Word/Excel on the web via your Microsoft account (syncs back)'
-        : 'Available for Office files',
-      disabled: !onlyOfficeOk && !officeDesktopOk,
-    },
-    {
-      id: 'office-desktop',
-      icon: Monitor,
-      label: officeLabel,
-      hint: officeDesktopOk
-        ? 'Desktop app via WebDAV — may be read-only if Windows WebClient is off'
-        : 'Available for Word, Excel, and PowerPoint files',
-      disabled: !officeDesktopOk,
-    },
-    {
-      id: 'browser',
-      icon: Globe,
-      label: 'Browser preview',
-      hint: browserOk
-        ? 'View in a new browser tab (PDF, images, text)'
-        : 'Not supported for this file type',
-      disabled: !browserOk,
-    },
-  ];
+  const options = useMemo(() => {
+    const all = [
+      {
+        id: 'onlyoffice',
+        icon: FilePenLine,
+        label: 'Edit in Alamait (OnlyOffice)',
+        hint: onlyOfficeOk
+          ? 'Full Office UI — live co-edit & revision tracking'
+          : onlyOfficeFile
+            ? 'Set VITE_ONLYOFFICE_DS_URL to a public Document Server URL to enable'
+            : 'Available for .doc / .docx / .xls / .xlsx / .ppt / .pptx',
+        disabled: !onlyOfficeOk,
+      },
+      {
+        id: 'collab-docx',
+        icon: Users,
+        label: 'Edit together (collab)',
+        hint: collabOk
+          ? 'Real-time co-editing for .docx (works on Vercel + Render)'
+          : 'Available for .docx files',
+        disabled: !collabOk,
+      },
+      {
+        id: 'docx-editor',
+        icon: FilePenLine,
+        label: 'Simple .docx editor',
+        hint: docxEditorOk
+          ? 'In-browser Word editing with save → versions'
+          : 'Available for .docx files',
+        disabled: !docxEditorOk,
+      },
+      {
+        id: 'xlsx-editor',
+        icon: FilePenLine,
+        label: 'Simple .xlsx editor',
+        hint: xlsxEditorOk
+          ? 'In-browser spreadsheet with save → versions'
+          : 'Available for .xlsx files',
+        disabled: !xlsxEditorOk,
+      },
+      {
+        id: 'ms365',
+        icon: Monitor,
+        label: 'Edit in Microsoft 365 Online',
+        hint: onlyOfficeOk || officeDesktopOk
+          ? 'Opens Word/Excel on the web via your Microsoft account (syncs back)'
+          : 'Available for Office files',
+        disabled: !onlyOfficeOk && !officeDesktopOk,
+      },
+      {
+        id: 'office-desktop',
+        icon: Monitor,
+        label: officeLabel,
+        hint: officeDesktopOk
+          ? 'Desktop app via WebDAV — may be read-only if Windows WebClient is off'
+          : 'Available for Word, Excel, and PowerPoint files',
+        disabled: !officeDesktopOk,
+      },
+      {
+        id: 'browser',
+        icon: Globe,
+        label: 'Browser preview',
+        hint: browserOk
+          ? 'View in a new browser tab (PDF, images, text)'
+          : 'Not supported for this file type',
+        disabled: !browserOk,
+      },
+    ];
+    if (!onlyOfficeOk) return all;
+    const oo = all.find((o) => o.id === 'onlyoffice');
+    const rest = all.filter((o) => o.id !== 'onlyoffice');
+    return oo ? [oo, ...rest] : all;
+  }, [onlyOfficeOk, onlyOfficeFile, collabOk, docxEditorOk, xlsxEditorOk, officeDesktopOk, browserOk, officeLabel]);
 
   const handleOpen = () => {
     if (choice === 'browser' && !browserOk) return;

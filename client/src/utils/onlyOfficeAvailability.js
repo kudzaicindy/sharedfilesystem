@@ -29,11 +29,11 @@ export function sanitizeOnlyOfficeDsUrl(url) {
   return normalized;
 }
 
-/** Default in-app editor when user clicks Open (production-friendly). */
+/** Default in-app editor when user clicks Open. */
 export function pickDefaultOpenChoice({ ext, browserOk, officeDesktopOk }) {
+  if (isOnlyOfficeConfigured() && isOnlyOfficeFileExt(ext)) return 'onlyoffice';
   if (ext === 'docx') return 'collab-docx';
   if (ext === 'xlsx') return 'xlsx-editor';
-  if (isOnlyOfficeConfigured() && isOnlyOfficeFileExt(ext)) return 'onlyoffice';
   if (officeDesktopOk) return 'office-desktop';
   if (browserOk) return 'browser';
   return 'browser';
@@ -41,13 +41,9 @@ export function pickDefaultOpenChoice({ ext, browserOk, officeDesktopOk }) {
 
 /** Route path for the default in-app editor (when OnlyOffice is unavailable). */
 export function getFallbackEditorPath(docId, ext = '') {
-  const choice = pickDefaultOpenChoice({
-    ext: String(ext).toLowerCase(),
-    browserOk: true,
-    officeDesktopOk: false,
-  });
-  if (choice === 'collab-docx') return `/collab/${docId}`;
-  if (choice === 'xlsx-editor') return `/xlsx-editor/${docId}`;
-  if (choice === 'docx-editor') return `/docx-editor/${docId}`;
+  const e = String(ext).toLowerCase();
+  if (e === 'docx') return `/collab/${docId}`;
+  if (e === 'xlsx') return `/xlsx-editor/${docId}`;
+  if (e === 'doc') return `/docx-editor/${docId}`;
   return null;
 }
