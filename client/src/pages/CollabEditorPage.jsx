@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import mammoth from 'mammoth';
 import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { getStarterExtensions } from '../utils/tiptapStarterExtensions';
 import Collaboration from '@tiptap/extension-collaboration';
 import Image from '@tiptap/extension-image';
 import { Table } from '@tiptap/extension-table';
@@ -54,7 +54,7 @@ export default function CollabEditorPage() {
 
   const extensions = useMemo(() => {
     const base = [
-      StarterKit.configure({ history: false, codeBlock: false }),
+      ...getStarterExtensions({ history: false, codeBlock: false }),
       Collaboration.configure({ document: ydoc }),
       TextStyle,
       Color,

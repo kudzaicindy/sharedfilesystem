@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import mammoth from 'mammoth';
 import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { getStarterExtensions } from '../utils/tiptapStarterExtensions';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
 import { Table } from '@tiptap/extension-table';
@@ -269,10 +269,7 @@ export default function SimpleDocxEditorPage() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        // keep it simple; Word import will already have headings/paragraphs
-        codeBlock: false,
-      }),
+      ...getStarterExtensions({ codeBlock: false }),
       Underline,
       TextStyle,
       Color,
