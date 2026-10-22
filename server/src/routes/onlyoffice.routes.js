@@ -37,12 +37,38 @@ function onlyOfficeSecret() {
   return secret;
 }
 
-function dsUrl() {
-  const raw = (process.env.ONLYOFFICE_DS_URL || '').replace(/\/$/, '');
-  if (process.env.NODE_ENV === 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(raw)) {
-    return '';
+function getDsUrlConfig() {
+  const raw = String(process.env.ONLYOFFICE_DS_URL || '').trim().replace(/\/$/, '');
+  if (!raw) {
+    return {
+      url: '',
+      reason:
+        'ONLYOFFICE_DS_URL is missing on the API server (Render → Environment). ' +
+        'VITE_ONLYOFFICE_DS_URL on Vercel is not enough — the backend needs ONLYOFFICE_DS_URL too.',
+    };
   }
-  return raw || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8082');
+  if (process.env.NODE_ENV === 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(raw)) {
+    return {
+      url: '',
+      reason:
+        `ONLYOFFICE_DS_URL is set to "${raw}" but localhost cannot be used in production. ` +
+        'Deploy OnlyOffice to a public HTTPS URL (Fly.io or VPS) and update Render + Vercel.',
+    };
+  }
+  if (process.env.NODE_ENV === 'production' && !/^https:\/\//i.test(raw)) {
+    return {
+      url: '',
+      reason: `ONLYOFFICE_DS_URL must start with https:// in production (got "${raw}").`,
+    };
+  }
+  return { url: raw, reason: null };
+}
+
+function dsUrl() {
+  const { url } = getDsUrlConfig();
+  if (url) return url;
+  if (process.env.NODE_ENV === 'production') return '';
+  return 'http://localhost:8082';
 }
 
 function serverUrl() {
@@ -51,6 +77,13 @@ function serverUrl() {
     process.env.SERVER_PUBLIC_URL ||
     'http://localhost:5000';
   return base.replace(/\/$/, '');
+}
+
+/** In dev, OnlyOffice (Docker) should fetch files via the API — not direct S3 URLs. */
+function preferOnlyOfficeApiDownload() {
+  if (process.env.ONLYOFFICE_PREFER_API_DOWNLOAD === 'true') return true;
+  if (process.env.ONLYOFFICE_PREFER_API_DOWNLOAD === 'false') return false;
+  return process.env.NODE_ENV !== 'production';
 }
 
 function extFromFilename(name) {
@@ -99,8 +132,9 @@ router.get('/config/:docId', authenticate, async (req, res, next) => {
     if (!doc || doc.isDeleted) throw Object.assign(new Error('Document not found'), { status: 404 });
 
     if (!dsUrl()) {
+      const { reason } = getDsUrlConfig();
       throw Object.assign(
-        new Error('OnlyOffice is not configured on the server. Set ONLYOFFICE_DS_URL to a public Document Server URL.'),
+        new Error(reason || 'OnlyOffice is not configured on the server.'),
         { status: 503 },
       );
     }
@@ -109,9 +143,9 @@ router.get('/config/:docId', authenticate, async (req, res, next) => {
     const versionNum = lastVersion?.versionNum || 1;
     const callbackUrl = `${serverUrl()}/api/onlyoffice/callback/${doc._id}`;
 
-    // Prefer direct S3 URL so Document Server does not wait on Node → S3
+    // Prefer direct S3 URL in production; in dev use API proxy (Docker → host.docker.internal)
     let fileUrl = null;
-    if (doc.storageKey) {
+    if (!preferOnlyOfficeApiDownload() && doc.storageKey) {
       try {
         fileUrl = await getPresignedDownloadUrl(doc.storageKey, 2 * 60 * 60);
       } catch {
@@ -152,6 +186,7 @@ router.get('/config/:docId', authenticate, async (req, res, next) => {
           print: true,
           review: true,
           comment: true,
+          chat: false,
         },
       },
       editorConfig: {
@@ -173,7 +208,6 @@ router.get('/config/:docId', authenticate, async (req, res, next) => {
           help: false,
           about: false,
           feedback: false,
-          chat: false,
           logo: { visible: false },
           // Do not set loaderName — OO 9.x then requests main/index_loader.html (missing in this image)
           ...(isWordExt(ext) ? {

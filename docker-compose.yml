@@ -1,8 +1,9 @@
 services:
   onlyoffice:
-    image: onlyoffice/documentserver:latest
+    image: onlyoffice/documentserver:8.2.2
     container_name: alamait-onlyoffice
     restart: unless-stopped
+    mem_limit: 4g
     ports:
       - "8082:80"
     environment:

@@ -95,7 +95,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_relativeSplatPath: true }}>
         <ModalProvider>
           <LocalEditProvider>
             <AppRoutes />

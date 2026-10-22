@@ -244,7 +244,9 @@ async function downloadDocument({ docId, user, req }) {
   const storageType = process.env.STORAGE_TYPE || 'local';
   if (storageType === 'local' && !localFileExists(doc.storageKey)) {
     throw Object.assign(
-      new Error('File not found on server. It may have been deleted — try uploading again.'),
+      new Error(
+        'File not found on disk. With STORAGE_TYPE=local, re-upload the file (older uploads may still be in S3 only).',
+      ),
       { status: 404 },
     );
   }

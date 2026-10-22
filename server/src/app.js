@@ -58,8 +58,9 @@ if ((process.env.STORAGE_TYPE || 'local') === 'local') {
   app.use('/uploads', express.static(getUploadDir()));
 }
 
-// Health check
+// Health check (Render often probes /health; clients may use /api/health)
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // Global error handler
 app.use((err, req, res, next) => {

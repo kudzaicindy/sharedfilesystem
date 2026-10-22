@@ -1,15 +1,30 @@
 require('dotenv').config();
+const fs = require('fs');
 const http = require('http');
 const app = require('./app');
 const { connectDB } = require('./config/database');
 const { connectRedis } = require('./config/redis');
 const { initSocket } = require('./services/realtime/socket');
+const { getUploadDir, probeS3Access } = require('./utils/storage');
 
 const PORT = process.env.PORT || 5000;
 
 async function start() {
   await connectDB();
   await connectRedis();
+
+  const storageType = process.env.STORAGE_TYPE || 'local';
+  if (storageType === 'local') {
+    fs.mkdirSync(getUploadDir(), { recursive: true });
+    console.log(`📁 Storage: local (${getUploadDir()})`);
+  } else {
+    console.log(`📁 Storage: ${storageType} (bucket ${process.env.S3_BUCKET || '?'})`);
+    const s3Probe = await probeS3Access();
+    if (!s3Probe.ok) {
+      console.error('❌ S3 not usable:', s3Probe.message);
+      console.error('   Run: npm run check:s3');
+    }
+  }
 
   const server = http.createServer(app);
   initSocket(server);

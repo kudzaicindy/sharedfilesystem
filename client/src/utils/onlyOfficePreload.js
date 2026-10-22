@@ -3,15 +3,13 @@
 import api from './api';
 import {
   getConfiguredOnlyOfficeDsUrl,
+  getEffectiveOnlyOfficeDsUrl,
   isOnlyOfficeConfigured,
   sanitizeOnlyOfficeDsUrl,
 } from './onlyOfficeAvailability';
 
 function initialDsUrl() {
-  const configured = sanitizeOnlyOfficeDsUrl(getConfiguredOnlyOfficeDsUrl());
-  if (configured) return configured;
-  if (import.meta.env.PROD) return '';
-  return 'http://localhost:8082';
+  return getEffectiveOnlyOfficeDsUrl();
 }
 
 const scriptPromises = new Map();

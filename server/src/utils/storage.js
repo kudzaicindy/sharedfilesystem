@@ -1,4 +1,10 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+} = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const fs = require('fs');
 const path = require('path');
@@ -6,12 +12,55 @@ const { v4: uuidv4 } = require('uuid');
 
 const TYPE = process.env.STORAGE_TYPE || 'local';
 
+function buildS3ClientConfig() {
+  const region = process.env.S3_REGION || 'us-east-1';
+  const endpoint = (process.env.S3_ENDPOINT || '').trim();
+  const credentials = {
+    accessKeyId:     process.env.S3_ACCESS_KEY_ID,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+  };
+
+  // Cloudflare R2, MinIO, etc. — custom endpoint + path-style
+  if (endpoint && !endpoint.includes('amazonaws.com')) {
+    return {
+      region: process.env.S3_REGION || 'auto',
+      endpoint,
+      credentials,
+      forcePathStyle: true,
+    };
+  }
+
+  // Standard AWS S3 — use region only (custom endpoint often causes 403)
+  return { region, credentials };
+}
+
+function isAwsQuarantinedKeyError(err) {
+  const msg = String(err?.message || err?.Message || '');
+  return /AWSCompromisedKeyQuarantine/i.test(msg);
+}
+
+function storageAccessDeniedMessage(err) {
+  if (isAwsQuarantinedKeyError(err)) {
+    return (
+      'AWS disabled these access keys (CompromisedKeyQuarantine). Create new IAM access keys in AWS Console, ' +
+      'update S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY in server/.env and on Render, then restart the API. ' +
+      'Do not commit keys to git.'
+    );
+  }
+  return (
+    'Storage access denied. Verify S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET, and S3_REGION. ' +
+    'The IAM user needs s3:GetObject, s3:PutObject, s3:DeleteObject on the bucket.'
+  );
+}
+
 function assertS3Configured() {
   const missing = [];
-  if (!process.env.S3_ENDPOINT) missing.push('S3_ENDPOINT');
   if (!process.env.S3_BUCKET) missing.push('S3_BUCKET');
   if (!process.env.S3_ACCESS_KEY_ID) missing.push('S3_ACCESS_KEY_ID');
   if (!process.env.S3_SECRET_ACCESS_KEY) missing.push('S3_SECRET_ACCESS_KEY');
+  const endpoint = (process.env.S3_ENDPOINT || '').trim();
+  const isCustomEndpoint = endpoint && !endpoint.includes('amazonaws.com');
+  if (isCustomEndpoint && !endpoint) missing.push('S3_ENDPOINT');
   if (missing.length) {
     throw Object.assign(
       new Error(`Storage misconfigured: set ${missing.join(', ')} (STORAGE_TYPE=${TYPE})`),
@@ -20,14 +69,7 @@ function assertS3Configured() {
   }
 }
 
-const s3 = TYPE !== 'local' ? new S3Client({
-  region:   process.env.S3_REGION || 'auto',
-  endpoint: process.env.S3_ENDPOINT,
-  credentials: {
-    accessKeyId:     process.env.S3_ACCESS_KEY_ID,
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-  },
-}) : null;
+const s3 = TYPE !== 'local' ? new S3Client(buildS3ClientConfig()) : null;
 
 function getUploadDir() {
   const dir = process.env.LOCAL_UPLOAD_DIR || './uploads';
@@ -106,11 +148,8 @@ async function getFileStream(key) {
         { status: 404 },
       );
     }
-    if (code === 'AccessDenied' || code === 'InvalidAccessKeyId') {
-      throw Object.assign(
-        new Error('Storage access denied. Check S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY on the server.'),
-        { status: 500 },
-      );
+    if (code === 'AccessDenied' || code === 'InvalidAccessKeyId' || err?.$metadata?.httpStatusCode === 403) {
+      throw Object.assign(new Error(storageAccessDeniedMessage(err)), { status: 500 });
     }
     throw Object.assign(
       new Error(err?.message || 'Could not read file from storage'),
@@ -135,6 +174,20 @@ function localFileExists(key) {
   return fs.existsSync(resolveLocalPath(key));
 }
 
+/** Log-friendly S3 probe at startup (does not throw). */
+async function probeS3Access() {
+  if (TYPE === 'local') return { ok: true };
+  try {
+    assertS3Configured();
+    await s3.send(
+      new ListObjectsV2Command({ Bucket: process.env.S3_BUCKET, MaxKeys: 1 }),
+    );
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: storageAccessDeniedMessage(err), raw: err?.message };
+  }
+}
+
 module.exports = {
   uploadFile,
   deleteFile,
@@ -142,4 +195,8 @@ module.exports = {
   getPresignedDownloadUrl,
   localFileExists,
   getUploadDir,
+  buildS3ClientConfig,
+  storageAccessDeniedMessage,
+  isAwsQuarantinedKeyError,
+  probeS3Access,
 };

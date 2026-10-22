@@ -1,8 +1,13 @@
-/** Whether the browser can load OnlyOffice (public DS URL configured). */
+/** Whether the browser can load OnlyOffice (explicit DS URL configured). */
 
 export function getConfiguredOnlyOfficeDsUrl() {
   const raw = import.meta.env.VITE_ONLYOFFICE_DS_URL?.trim();
   return raw ? raw.replace(/\/$/, '') : '';
+}
+
+/** URL the browser loads OnlyOffice from — only when VITE_ONLYOFFICE_DS_URL is set. */
+export function getEffectiveOnlyOfficeDsUrl() {
+  return sanitizeOnlyOfficeDsUrl(getConfiguredOnlyOfficeDsUrl());
 }
 
 export function isOnlyOfficeFileExt(ext = '') {
@@ -15,10 +20,7 @@ export function isLocalOnlyOfficeDsUrl(url = '') {
 }
 
 export function isOnlyOfficeConfigured() {
-  const url = getConfiguredOnlyOfficeDsUrl();
-  if (!url) return false;
-  if (import.meta.env.PROD && isLocalOnlyOfficeDsUrl(url)) return false;
-  return true;
+  return Boolean(getEffectiveOnlyOfficeDsUrl());
 }
 
 /** Drop unusable DS URLs (e.g. API returning localhost in production). */
@@ -29,7 +31,7 @@ export function sanitizeOnlyOfficeDsUrl(url) {
   return normalized;
 }
 
-/** Default in-app editor when user clicks Open. */
+/** Default in-app editor — collab/xlsx work without OnlyOffice (local + Vercel). */
 export function pickDefaultOpenChoice({ ext, browserOk, officeDesktopOk }) {
   if (isOnlyOfficeConfigured() && isOnlyOfficeFileExt(ext)) return 'onlyoffice';
   if (ext === 'docx') return 'collab-docx';

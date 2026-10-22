@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon --exec \"node --use-system-ca\" src/index.js",
     "start": "node --use-system-ca src/index.js",
-    "seed": "node --use-system-ca scripts/seed-all-collections.js"
+    "seed": "node --use-system-ca scripts/seed-all-collections.js",
+    "check:s3": "node --use-system-ca scripts/test-s3-key.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.540.0",
